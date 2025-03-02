@@ -124,7 +124,7 @@ const LINKEDIN_POST_ID = process.env.LINKEDIN_POST_ID;
 
 // LinkedIn OAuth 2.0 Routes
 app.get('/linkedin/auth', (req, res) => {
-  const authUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${LINKEDIN_CLIENT_ID}&redirect_uri=${LINKEDIN_REDIRECT_URI}&scope=r_liteprofile,r_basicprofile,r_organization_social,w_member_social`;
+  const authUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${LINKEDIN_CLIENT_ID}&redirect_uri=${LINKEDIN_REDIRECT_URI}&scope=r_liteprofile,r_organization_social,w_member_social`;
   res.redirect(authUrl);
 });
 

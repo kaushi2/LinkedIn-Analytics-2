@@ -1,0 +1,143 @@
+// Node.js (Express.js backend) - with MySQL and Passport Authentication
+
+const express = require('express');
+const axios = require('axios');
+const cors = require('cors');
+const mysql = require('mysql2/promise'); // Using promise-based API
+const passport = require('passport');
+const LocalStrategy = require('passport-local').Strategy;
+const bcrypt = require('bcrypt');
+const session = require('express-session');
+const dotenv = require('dotenv');
+
+dotenv.config({ path: `.env.${process.env.NODE_ENV || 'development'}` });
+
+const app = express();
+const port = process.env.PORT || 5000;
+
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// MySQL Connection Pool
+const pool = mysql.createPool({
+  host: process.env.MYSQL_HOST,
+  user: process.env.MYSQL_USER,
+  password: process.env.MYSQL_PASSWORD,
+  database: process.env.MYSQL_DATABASE,
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0,
+});
+
+// Passport Configuration
+app.use(session({ secret: process.env.SESSION_SECRET, resave: false, saveUninitialized: false }));
+app.use(passport.initialize());
+app.use(passport.session());
+
+passport.use(
+  new LocalStrategy(async (username, password, done) => {
+    try {
+      const [rows] = await pool.query('SELECT * FROM users WHERE username = ?', [username]);
+      if (rows.length === 0) {
+        return done(null, false, { message: 'Incorrect username.' });
+      }
+      const user = rows[0];
+      const passwordMatch = await bcrypt.compare(password, user.password);
+      if (!passwordMatch) {
+        return done(null, false, { message: 'Incorrect password.' });
+      }
+      return done(null, user);
+    } catch (err) {
+      return done(err);
+    }
+  })
+);
+
+passport.serializeUser((user, done) => {
+  done(null, user.id);
+});
+
+passport.deserializeUser(async (id, done) => {
+  try {
+    const [rows] = await pool.query('SELECT * FROM users WHERE id = ?', [id]);
+    if (rows.length === 0) {
+      return done(null, false);
+    }
+    done(null, rows[0]);
+  } catch (err) {
+    done(err);
+  }
+});
+
+// Routes
+app.post('/register', async (req, res) => {
+  try {
+    const hashedPassword = await bcrypt.hash(req.body.password, 10);
+    await pool.query('INSERT INTO users (username, password) VALUES (?, ?)', [req.body.username, hashedPassword]);
+    res.status(201).json({ message: 'User registered successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/login', (req, res, next) => {
+  passport.authenticate('local', (err, user, info) => {
+    if (err) {
+      return next(err);
+    }
+    if (!user) {
+      return res.status(401).json({ message: info.message });
+    }
+    req.logIn(user, (err) => {
+      if (err) {
+        return next(err);
+      }
+      return res.json({ message: 'Login successful' });
+    });
+  })(req, res, next);
+});
+
+app.get('/logout', (req, res) => {
+  req.logout(() => {
+    res.json({ message: 'Logout successful' });
+  });
+});
+
+app.get('/protected', (req, res) => {
+  if (req.isAuthenticated()) {
+    res.json({ message: 'Protected route access granted' });
+  } else {
+    res.status(401).json({ message: 'Unauthorized' });
+  }
+});
+
+// LinkedIn OAuth 2.0 Configuration and Routes (same as before)
+const LINKEDIN_CLIENT_ID = process.env.LINKEDIN_CLIENT_ID;
+const LINKEDIN_CLIENT_SECRET = process.env.LINKEDIN_CLIENT_SECRET;
+const LINKEDIN_POST_ID = process.env.LINKEDIN_POST_ID;
+
+let accessToken = null;
+
+async function getAccessToken() {
+  // ... (same as before) ...
+}
+
+app.get('/linkedin/stats', async (req, res) => {
+  // ... (same as before) ...
+});
+
+app.listen(port, () => {
+  console.log(`Server listening at http://localhost:${port}`);
+});
+
+// .env file (updated for MySQL)
+PORT=5000
+MYSQL_HOST=your-mysql-host
+MYSQL_USER=your-mysql-user
+MYSQL_PASSWORD=your-mysql-password
+MYSQL_DATABASE=your-mysql-database
+LINKEDIN_CLIENT_ID=your-linkedin-client-id
+LINKEDIN_CLIENT_SECRET=your-linkedin-client-secret
+LINKEDIN_POST_ID=urn:li:ugcPost:your-linkedin-post-id
+SESSION_SECRET=your-session-secret
