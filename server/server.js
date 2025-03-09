@@ -115,21 +115,23 @@ app.get('/protected', (req, res) => {
     }
 });
 
-
 // LinkedIn OAuth 2.0 Configuration
 const LINKEDIN_CLIENT_ID = process.env.LINKEDIN_CLIENT_ID;
 const LINKEDIN_CLIENT_SECRET = process.env.LINKEDIN_CLIENT_SECRET;
 const LINKEDIN_REDIRECT_URI = process.env.LINKEDIN_REDIRECT_URI;
 const LINKEDIN_POST_ID = process.env.LINKEDIN_POST_ID;
 
-// LinkedIn OAuth 2.0 Routes
+// Redirect to LinkedIn authorization
 app.get('/linkedin/auth', (req, res) => {
-  const authUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${LINKEDIN_CLIENT_ID}&redirect_uri=${LINKEDIN_REDIRECT_URI}&scope=r_liteprofile,r_organization_social,w_member_social`;
+  const authUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${LINKEDIN_CLIENT_ID}&redirect_uri=${encodeURIComponent(LINKEDIN_REDIRECT_URI)}&scope=email,openid,profile,w_member_social`;
   res.redirect(authUrl);
 });
 
+// Callback route
 app.get('/linkedin/callback', async (req, res) => {
   const { code } = req.query;
+
+  // Exchange code for access token
   try {
     const tokenResponse = await axios.post(
       'https://www.linkedin.com/oauth/v2/accessToken',
@@ -137,6 +139,7 @@ app.get('/linkedin/callback', async (req, res) => {
         grant_type: 'authorization_code',
         code: code,
         redirect_uri: LINKEDIN_REDIRECT_URI,
+        callback: 'http://localhost:5000/linkedin/callback',
         client_id: LINKEDIN_CLIENT_ID,
         client_secret: LINKEDIN_CLIENT_SECRET,
       }).toString(),
@@ -147,44 +150,49 @@ app.get('/linkedin/callback', async (req, res) => {
       }
     );
 
-    const accessToken = tokenResponse.data.access_token;
-    // Store accessToken in database or session for future use
-    req.session.linkedinAccessToken = accessToken;
-    res.redirect('/linkedin/stats'); // Redirect to stats route
+    req.session.linkedinAccessToken = tokenResponse.data.access_token;
+    res.redirect(process.env.REACT_APP_API_BASE_URL);
 
+    // // Use access token to make API requests
+    // const postsResponse = await axios.get(
+    //   'https://api.linkedin.com/v2/shares/{post_id}',
+    //   {
+    //     headers: {
+    //       Authorization: `Bearer ${accessToken}`,
+    //     },
+    //   }
+    // );
+
+    // res.json(postsResponse.data);
   } catch (error) {
-    console.error('LinkedIn OAuth error:', error);
-    res.status(500).send('LinkedIn OAuth failed');
+    console.error(error);
+    res.status(500).send('Error');
   }
 });
 
 app.get('/linkedin/stats', async (req, res) => {
-    const accessToken = req.session.linkedinAccessToken;
+    //const accessToken = req.session.linkedinAccessToken;
+    const accessToken = process.env.ACCESSTOKEN;
     if(!accessToken){
         return res.status(401).send("Not Authorized");
     }
-
     try {
         const headers = {
             Authorization: `Bearer ${accessToken}`,
             'X-Restli-Protocol-Version': '2.0.0',
         };
-
         const sharesResponse = await axios.get(
             `https://api.linkedin.com/v2/shares/${LINKEDIN_POST_ID}`,
             { headers }
         );
-
         const commentsResponse = await axios.get(
             `https://api.linkedin.com/v2/socialMetadata/${LINKEDIN_POST_ID}`,
             {headers}
         );
-
         const likesResponse = await axios.get(
             `https://api.linkedin.com/v2/socialMetadata/${LINKEDIN_POST_ID}`,
             {headers}
         );
-
         const sharesCount = sharesResponse.data.totalShares || 0;
         const commentsCount = commentsResponse.data.totalComments || 0;
         const likesCount = likesResponse.data.totalLikes || 0;

@@ -9,21 +9,25 @@ function App() {
   const [password, setPassword] = useState('');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [message, setMessage] = useState('');
-  const [isAuthorized, setIsAuthorized] = useState(false);
   const [linkedInAuthenticated, setLinkedInAuthenticated] = useState(false); // Default to true, will be checked
   const [canFetchStats, setCanFetchStats] = useState(false); // New state
 
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
 
   useEffect(() => {
-    if (isLoggedIn && isAuthorized && !linkedInAuthenticated) {
+    if (isLoggedIn && !linkedInAuthenticated) {
       window.location.href = `${API_BASE_URL}/linkedin/auth`;
-    } else if (isLoggedIn && isAuthorized && linkedInAuthenticated){
+    } else if (isLoggedIn && linkedInAuthenticated){
         setCanFetchStats(true); // Allow stats fetch
     } else {
         setCanFetchStats(false);
     }
-  }, [isLoggedIn, isAuthorized, linkedInAuthenticated, API_BASE_URL]);
+    // Check for successful LinkedIn authentication
+    if (window.location.origin === "/" && isLoggedIn && !linkedInAuthenticated) {
+      setLinkedInAuthenticated(true);
+      setCanFetchStats(true); // Allow stats fetch
+    }    
+  }, [isLoggedIn, linkedInAuthenticated, API_BASE_URL]);
 
   useEffect(() => {
     if (canFetchStats) {
@@ -62,7 +66,6 @@ function App() {
       setIsLoggedIn(true);
       setMessage('Login successful');
       //checkAuthorization(); // Check auth after login
-      setIsAuthorized(true); // currently bypassed to true
     } catch (err) {
       setMessage(err.response.data.message);
     }
@@ -72,7 +75,7 @@ function App() {
     try {
       await axios.get(`${API_BASE_URL}/logout`);
       setIsLoggedIn(false);
-      setIsAuthorized(false); // Reset auth on logout
+      setLinkedInAuthenticated(false); // Reset auth on logout
       setMessage('Logout successful');
     } catch (err) {
       setMessage(err.response.data.message);
@@ -82,9 +85,9 @@ function App() {
   const checkAuthorization = async () => {
     try {
       await axios.get(`${API_BASE_URL}/protected`);
-      setIsAuthorized(true);
+      setLinkedInAuthenticated(true);
     } catch (err) {
-      setIsAuthorized(false);
+      setLinkedInAuthenticated(false);
     }
   };
 
@@ -107,7 +110,7 @@ function App() {
       <h1>LinkedIn Post Statistics</h1>
       <p>{message}</p>
       {isLoggedIn ? (
-        isAuthorized ? (
+        linkedInAuthenticated ? (
           <>
             <p>Shares: {stats.shares}</p>
             <p>Comments: {stats.comments}</p>

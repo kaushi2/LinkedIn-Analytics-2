@@ -15,7 +15,7 @@
             "name": "SWA: Run client",
             "request": "launch",
             "type": "pwa-chrome",
-            "url": "http://localhost:4280",
+            "url": "http://localhost:3000",
             "preLaunchTask": "swa: start client",
             "webRoot": "${workspaceFolder}/client",
             "timeout": 30000
