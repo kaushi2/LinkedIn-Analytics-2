@@ -151,23 +151,22 @@ app.get('/linkedin/callback', async (req, res) => {
     );
 
     req.session.linkedinAccessToken = tokenResponse.data.access_token;
-    res.redirect(process.env.REACT_APP_API_BASE_URL);
 
-    // // Use access token to make API requests
-    // const postsResponse = await axios.get(
-    //   'https://api.linkedin.com/v2/shares/{post_id}',
-    //   {
-    //     headers: {
-    //       Authorization: `Bearer ${accessToken}`,
-    //     },
-    //   }
-    // );
+    res.json({ message: 'LinkedIn Login successful' });
+    res.redirect('http://localhost:3000/');
 
-    // res.json(postsResponse.data);
   } catch (error) {
     console.error(error);
     res.status(500).send('Error');
   }
+});
+
+app.get('/linkedin/isLinkedInAuthenticated', (req, res) => {
+    if (req.session.linkedinAccessToken) {
+        res.json({ linkedInAuthenticated: true });
+    } else {
+        res.json({ linkedInAuthenticated: false });
+    }
 });
 
 app.get('/linkedin/stats', async (req, res) => {

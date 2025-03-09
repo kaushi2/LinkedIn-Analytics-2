@@ -17,6 +17,7 @@ function App() {
   useEffect(() => {
     if (isLoggedIn && !linkedInAuthenticated) {
       window.location.href = `${API_BASE_URL}/linkedin/auth`;
+      const linkedInAuthenticated = async() => await axios.get(`${API_BASE_URL}/linkedin/isLinkedInAutheticated`).data.linkedInAuthenticated;
     } else if (isLoggedIn && linkedInAuthenticated){
         setCanFetchStats(true); // Allow stats fetch
     } else {
