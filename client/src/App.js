@@ -17,17 +17,17 @@ function App() {
   useEffect(() => {
     if (isLoggedIn && !linkedInAuthenticated) {
       window.location.href = `${API_BASE_URL}/linkedin/auth`;
-      const linkedInAuthenticated = async() => await axios.get(`${API_BASE_URL}/linkedin/isLinkedInAutheticated`).data.linkedInAuthenticated;
+      setLinkedInAuthenticated(async() => await axios.get(`${API_BASE_URL}/linkedin/isLinkedInAutheticated`).data.linkedInAuthenticated);
     } else if (isLoggedIn && linkedInAuthenticated){
         setCanFetchStats(true); // Allow stats fetch
     } else {
         setCanFetchStats(false);
     }
     // Check for successful LinkedIn authentication
-    if (window.location.origin === "/" && isLoggedIn && !linkedInAuthenticated) {
-      setLinkedInAuthenticated(true);
-      setCanFetchStats(true); // Allow stats fetch
-    }    
+    // if (window.location.origin === "/" && isLoggedIn && !linkedInAuthenticated) {
+    //   setLinkedInAuthenticated(true);
+    //   setCanFetchStats(true); // Allow stats fetch
+    // }    
   }, [isLoggedIn, linkedInAuthenticated, API_BASE_URL]);
 
   useEffect(() => {
