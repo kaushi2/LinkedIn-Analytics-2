@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useLocation } from 'react-router-dom';
 
 function App() {
   const [stats, setStats] = useState({ shares: 0, comments: 0, likes: 0 });
@@ -9,29 +10,39 @@ function App() {
   const [password, setPassword] = useState('');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [message, setMessage] = useState('');
-  const [linkedInAuthenticated, setLinkedInAuthenticated] = useState(false); // Default to true, will be checked
-  const [canFetchStats, setCanFetchStats] = useState(false); // New state
+  const [linkedInAuthenticated, setLinkedInAuthenticated] = useState(false);
+  const [canFetchStats, setCanFetchStats] = useState(false);
+  const location = useLocation();
 
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
+
+  axios.defaults.withCredentials = true;
+   
+  useEffect(() => {
+    const queryParams = new URLSearchParams(location.search);
+    const isLoggedInParam = queryParams.get('isLoggedIn');
+    const linkedInAuthenticatedParam = queryParams.get('linkedInAuthenticated');
+
+    if (isLoggedInParam === 'true') {
+      setIsLoggedIn(true);
+    }
+    if (linkedInAuthenticatedParam === 'true') {
+      setLinkedInAuthenticated(true);
+    }
+  }, [location.search]);
 
   useEffect(() => {
     if (isLoggedIn && !linkedInAuthenticated) {
       window.location.href = `${API_BASE_URL}/linkedin/auth`;
-      setLinkedInAuthenticated(async() => await axios.get(`${API_BASE_URL}/linkedin/isLinkedInAutheticated`).data.linkedInAuthenticated);
-    } else if (isLoggedIn && linkedInAuthenticated){
-        setCanFetchStats(true); // Allow stats fetch
+    } else if (isLoggedIn && linkedInAuthenticated) {
+      setCanFetchStats(true);
     } else {
-        setCanFetchStats(false);
+      setCanFetchStats(false);
     }
-    // Check for successful LinkedIn authentication
-    // if (window.location.origin === "/" && isLoggedIn && !linkedInAuthenticated) {
-    //   setLinkedInAuthenticated(true);
-    //   setCanFetchStats(true); // Allow stats fetch
-    // }    
   }, [isLoggedIn, linkedInAuthenticated, API_BASE_URL]);
 
   useEffect(() => {
-    if (canFetchStats) {
+    if (canFetchStats) { 
       const fetchStats = async () => {
         try {
           const response = await axios.get(`${API_BASE_URL}/linkedin/stats`);
@@ -45,15 +56,15 @@ function App() {
           }
         }
       };
-
+  
       fetchStats();
     }
-  }, [canFetchStats, API_BASE_URL]);
+  }, [canFetchStats, API_BASE_URL]);  // ✅ Use `canFetchStats` instead of `isLoggedIn`
 
   const handleRegister = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.post(`${API_BASE_URL}/register`, { username, password });
+      const response = await axios.post(`${API_BASE_URL}/register`, { username, password }, { withCredentials: true });
       setMessage(response.data.message);
     } catch (err) {
       setMessage(err.response.data.error);
@@ -66,7 +77,6 @@ function App() {
       await axios.post(`${API_BASE_URL}/login`, { username, password });
       setIsLoggedIn(true);
       setMessage('Login successful');
-      //checkAuthorization(); // Check auth after login
     } catch (err) {
       setMessage(err.response.data.message);
     }
@@ -76,31 +86,12 @@ function App() {
     try {
       await axios.get(`${API_BASE_URL}/logout`);
       setIsLoggedIn(false);
-      setLinkedInAuthenticated(false); // Reset auth on logout
+      setLinkedInAuthenticated(false);
       setMessage('Logout successful');
     } catch (err) {
       setMessage(err.response.data.message);
     }
   };
-
-  const checkAuthorization = async () => {
-    try {
-      await axios.get(`${API_BASE_URL}/protected`);
-      setLinkedInAuthenticated(true);
-    } catch (err) {
-      setLinkedInAuthenticated(false);
-    }
-  };
-
-  useEffect(() => {
-    if (isLoggedIn) {
-      //checkAuthorization(); // check authorization on initial login state.
-    }
-  }, [isLoggedIn, API_BASE_URL]);
-
-  // if (loading) {
-  //   return <div>Loading...</div>;
-  // }
 
   if (error) {
     return <div>Error: {error.message}</div>;
